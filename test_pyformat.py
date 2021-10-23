@@ -289,6 +289,18 @@ if True:
 
         self.assertIn('requires --aggressive', output_file.getvalue())
 
+    def test_add_trailing_comma_requires_aggressive(self):
+        output_file = io.StringIO()
+        self.assertEqual(
+            2,
+            pyformat._main(
+                argv=['my_fake_program',
+                      '--add-trailing-comma', __file__],
+                standard_out=output_file,
+                standard_error=output_file))
+
+        self.assertIn('requires --aggressive', output_file.getvalue())
+
     def test_ignore_hidden_directories(self):
         with temporary_directory() as directory:
             with temporary_directory(prefix='.',
@@ -390,6 +402,36 @@ def test():
                 self.assertEqual('''\
 def test():
     return 42
+''', f.read())
+
+
+    def test_add_trailing_comma(self):
+        with temporary_file("""\
+def test(
+        hello
+):
+    x = [
+      43, 41
+    ]
+    return x
+""") as filename:
+            output_file = io.StringIO()
+            pyformat._main(argv=['my_fake_program',
+                                 '--in-place',
+                                 '--aggressive',
+                                 '--add-trailing-comma',
+                                 filename],
+                           standard_out=output_file,
+                           standard_error=None)
+            with open(filename) as f:
+                self.assertEqual('''\
+def test(
+        hello,
+):
+    x = [
+        43, 41,
+    ]
+    return x
 ''', f.read())
 
     def test_end_to_end(self):
