@@ -31,7 +31,7 @@ from __future__ import unicode_literals
 import io
 import signal
 import sys
-from typing import Optional, Tuple
+from typing import Tuple
 
 from add_trailing_comma._main import _fix_src as add_trailing_comma_to_code
 import autoflake
@@ -101,7 +101,7 @@ def detect_io_encoding(input_file: io.BytesIO, limit_byte_check=-1):
         return 'latin-1'
 
 
-def read_file(filename: str) -> Tuple[str, Optional[str]]:
+def read_file(filename: str) -> Tuple[str, str]:
     """Read file from filesystem or from stdin when `-` is given."""
 
     if is_stdin(filename):
@@ -138,14 +138,17 @@ def format_file(filename, args, standard_out):
         sort_imports=args.sort_imports,
         add_trailing_comma=args.add_trailing_comma)
 
+    # Always write to stdout (even when no changes were made) when working with
+    # in-place stdin. This is what most tools (editors) expect.
+    if args.in_place and is_stdin(filename):
+        standard_out.write(formatted_source)
+        return True
+
     if source != formatted_source:
         if args.in_place:
-            if is_stdin(filename):
-                standard_out.write(formatted_source)
-            else:
-                with autopep8.open_with_encoding(filename, mode='w',
-                                                 encoding=encoding) as output_file:
-                    output_file.write(formatted_source)
+            with autopep8.open_with_encoding(filename, mode='w',
+                                             encoding=encoding) as output_file:
+                output_file.write(formatted_source)
         else:
             diff = autopep8.get_diff_text(
                 io.StringIO(source).readlines(),

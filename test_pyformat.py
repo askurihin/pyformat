@@ -179,6 +179,23 @@ import os
 x = 'abc'
 ''', '\n'.join(output_file.getvalue().split('\n')))
 
+    def test_in_place_stdin_no_change(self):
+        input_b = b'''\
+import os
+x = 'abc'
+'''
+        stdin = io.TextIOWrapper(io.BytesIO(input_b), 'UTF-8')
+        with mock.patch.object(sys, 'stdin', stdin):
+            output_file = io.StringIO()
+            pyformat._main(argv=['my_fake_program', '--in-place', '-'],
+                           standard_out=output_file,
+                           standard_error=None)
+            self.assertEqual('''\
+import os
+x = 'abc'
+''', '\n'.join(output_file.getvalue().split('\n')))
+
+
     def test_diff(self):
         with temporary_file('''\
 import os
