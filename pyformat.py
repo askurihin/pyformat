@@ -31,6 +31,7 @@ from __future__ import unicode_literals
 import io
 import signal
 import sys
+from typing import Optional, Tuple
 
 import autoflake
 import autopep8
@@ -80,16 +81,43 @@ def format_code(source, aggressive=False, apply_config=False, filename='',
     return formatted_source
 
 
+def detect_io_encoding(input_file: io.BytesIO, limit_byte_check=-1):
+    """Return file encoding."""
+    try:
+        from lib2to3.pgen2 import tokenize as lib2to3_tokenize
+        encoding: str = lib2to3_tokenize.detect_encoding(input_file.readline)[
+            0]
+
+        input_file.read(limit_byte_check).decode(encoding)
+
+        return encoding
+    except (LookupError, SyntaxError, UnicodeDecodeError):
+        return 'latin-1'
+
+
+def read_file(filename: str) -> Tuple[str, Optional[str]]:
+    """Read file from filesystem or from stdin when `-` is given."""
+
+    if is_stdin(filename):
+        data = sys.stdin.buffer.read()
+    else:
+        with open(filename, 'rb') as fp:
+            data = fp.read()
+    input_file = io.BytesIO(data)
+    encoding = detect_io_encoding(input_file)
+    return data.decode(encoding), encoding
+
+
+def is_stdin(filename: str):
+    return filename == '-'
+
+
 def format_file(filename, args, standard_out):
     """Run format_code() on a file.
 
     Return True if the new formatting differs from the original.
-
     """
-    encoding = autopep8.detect_encoding(filename)
-    with autopep8.open_with_encoding(filename,
-                                     encoding=encoding) as input_file:
-        source = input_file.read()
+    source, encoding = read_file(filename)
 
     if not source:
         return False
@@ -105,9 +133,12 @@ def format_file(filename, args, standard_out):
 
     if source != formatted_source:
         if args.in_place:
-            with autopep8.open_with_encoding(filename, mode='w',
-                                             encoding=encoding) as output_file:
-                output_file.write(formatted_source)
+            if is_stdin(filename):
+                standard_out.write(formatted_source)
+            else:
+                with autopep8.open_with_encoding(filename, mode='w',
+                                                 encoding=encoding) as output_file:
+                    output_file.write(formatted_source)
         else:
             diff = autopep8.get_diff_text(
                 io.StringIO(source).readlines(),
@@ -147,7 +178,6 @@ def format_multiple_files(filenames, args, standard_out, standard_error):
     """Format files and return booleans (any_changes, any_errors).
 
     Optionally format files recursively.
-
     """
     filenames = autopep8.find_files(list(filenames),
                                     args.recursive,
@@ -218,7 +248,6 @@ def _main(argv, standard_out, standard_error):
     """Internal main entry point.
 
     Return exit status. 0 means no error.
-
     """
     args = parse_args(argv)
 
