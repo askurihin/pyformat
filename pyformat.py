@@ -33,6 +33,7 @@ import signal
 import sys
 from typing import Optional, Tuple
 
+from add_trailing_comma._main import _fix_src as add_trailing_comma_to_code
 import autoflake
 import autopep8
 import docformatter
@@ -45,13 +46,16 @@ __version__ = '1.0a0'
 
 def formatters(aggressive, apply_config, filename='',
                remove_all_unused_imports=False, remove_unused_variables=False,
-               sort_imports=False):
+               sort_imports=False,
+               add_trailing_comma=False):
     """Return list of code formatters."""
     if aggressive:
         yield lambda code: autoflake.fix_code(
             code,
             remove_all_unused_imports=remove_all_unused_imports,
             remove_unused_variables=remove_unused_variables)
+        if add_trailing_comma:
+            yield lambda code: add_trailing_comma_to_code(code, min_version=(3, 6))
 
         autopep8_options = autopep8.parse_args(
             [filename] + int(aggressive) * ['--aggressive'],
@@ -69,13 +73,15 @@ def formatters(aggressive, apply_config, filename='',
 
 def format_code(source, aggressive=False, apply_config=False, filename='',
                 remove_all_unused_imports=False,
-                remove_unused_variables=False, sort_imports=False):
+                remove_unused_variables=False, sort_imports=False,
+                add_trailing_comma=False):
     """Return formatted source code."""
     formatted_source = source
 
     for fix in formatters(
             aggressive, apply_config, filename,
-            remove_all_unused_imports, remove_unused_variables, sort_imports):
+            remove_all_unused_imports, remove_unused_variables, sort_imports,
+            add_trailing_comma):
         formatted_source = fix(formatted_source)
 
     return formatted_source
@@ -129,7 +135,8 @@ def format_file(filename, args, standard_out):
         filename=filename,
         remove_all_unused_imports=args.remove_all_unused_imports,
         remove_unused_variables=args.remove_unused_variables,
-        sort_imports=args.sort_imports)
+        sort_imports=args.sort_imports,
+        add_trailing_comma=args.add_trailing_comma)
 
     if source != formatted_source:
         if args.in_place:
@@ -216,6 +223,8 @@ def parse_args(argv):
                         help='remove unused variables (requires "aggressive")')
     parser.add_argument('--sort-imports', action='store_true',
                         help='sort imports')
+    parser.add_argument('--add-trailing-comma', action='store_true',
+                        help='add trailing comma to code (requires "aggressive")')
     parser.add_argument('-j', '--jobs', type=int, metavar='n', default=1,
                         help='number of parallel jobs; '
                              'match CPU count if value is less than 1')
@@ -264,6 +273,11 @@ def _main(argv, standard_out, standard_error):
 
         if args.remove_unused_variables:
             print('--remove-unused-variables requires --aggressive',
+                  file=standard_error)
+            return 2
+
+        if args.add_trailing_comma:
+            print('--add-trailing-comma requires --aggressive',
                   file=standard_error)
             return 2
 
