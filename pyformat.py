@@ -39,6 +39,7 @@ import autopep8
 import docformatter
 import isort
 import unify
+import extra_reports
 
 
 __version__ = '1.0a0'
@@ -47,7 +48,8 @@ __version__ = '1.0a0'
 def formatters(aggressive, apply_config, filename='',
                remove_all_unused_imports=False, remove_unused_variables=False,
                sort_imports=False,
-               add_trailing_comma=False):
+               add_trailing_comma=False,
+               hanging_indent_match_default_indent=False):
     """Return list of code formatters."""
     if aggressive:
         yield lambda code: autoflake.fix_code(
@@ -64,7 +66,9 @@ def formatters(aggressive, apply_config, filename='',
         autopep8_options = autopep8.parse_args(
             [filename], apply_config=apply_config)
 
-    yield lambda code: autopep8.fix_code(code, options=autopep8_options)
+    with extra_reports.enable_check(extra_reports.report_e123_on_double_default_indent_size
+                                    if hanging_indent_match_default_indent else None):
+        yield lambda code: autopep8.fix_code(code, options=autopep8_options)
     yield docformatter.format_code
     yield unify.format_code
     if sort_imports:
@@ -74,14 +78,15 @@ def formatters(aggressive, apply_config, filename='',
 def format_code(source, aggressive=False, apply_config=False, filename='',
                 remove_all_unused_imports=False,
                 remove_unused_variables=False, sort_imports=False,
-                add_trailing_comma=False):
+                add_trailing_comma=False,
+                hanging_indent_match_default_indent=False):
     """Return formatted source code."""
     formatted_source = source
 
     for fix in formatters(
             aggressive, apply_config, filename,
             remove_all_unused_imports, remove_unused_variables, sort_imports,
-            add_trailing_comma):
+            add_trailing_comma, hanging_indent_match_default_indent):
         formatted_source = fix(formatted_source)
 
     return formatted_source
@@ -136,7 +141,9 @@ def format_file(filename, args, standard_out):
         remove_all_unused_imports=args.remove_all_unused_imports,
         remove_unused_variables=args.remove_unused_variables,
         sort_imports=args.sort_imports,
-        add_trailing_comma=args.add_trailing_comma)
+        add_trailing_comma=args.add_trailing_comma,
+        hanging_indent_match_default_indent=args.hanging_indent_match_default_indent
+    )
 
     # Always write to stdout (even when no changes were made) when working with
     # in-place stdin. This is what most tools (editors) expect.
@@ -228,6 +235,8 @@ def parse_args(argv):
                         help='sort imports')
     parser.add_argument('--add-trailing-comma', action='store_true',
                         help='add trailing comma to code (requires "aggressive")')
+    parser.add_argument('--hanging-indent-match-default-indent', action='store_true',
+                        help='Hanging indent must match default indent level')
     parser.add_argument('-j', '--jobs', type=int, metavar='n', default=1,
                         help='number of parallel jobs; '
                              'match CPU count if value is less than 1')

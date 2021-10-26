@@ -517,6 +517,78 @@ def test(
     return x
 ''', f.read())
 
+
+    def test_hanging_indent_match_default_indent_off_by_default(self):
+        with temporary_file("""\
+def a():
+    test_var = 1
+
+    for hello, world, may in sample(
+            test_var, test_var, test_var, test_var,
+    ):
+        print(hello, world, may)
+
+
+def sample(a, b, c, d):
+    return [(1, 2, 3)]
+""") as filename:
+            output_file = io.StringIO()
+            pyformat._main(argv=['my_fake_program',
+                                 '--in-place',
+                                 filename],
+                           standard_out=output_file,
+                           standard_error=None)
+            with open(filename) as f:
+                self.assertEqual('''\
+def a():
+    test_var = 1
+
+    for hello, world, may in sample(
+            test_var, test_var, test_var, test_var,
+    ):
+        print(hello, world, may)
+
+
+def sample(a, b, c, d):
+    return [(1, 2, 3)]
+''', f.read())
+
+    def test_hanging_indent_match_default_indent(self):
+        with temporary_file("""\
+def a():
+    test_var = 1
+
+    for hello, world, may in sample(
+            test_var, test_var, test_var, test_var,
+    ):
+        print(hello, world, may)
+
+
+def sample(a, b, c, d):
+    return [(1, 2, 3)]
+""") as filename:
+            output_file = io.StringIO()
+            pyformat._main(argv=['my_fake_program',
+                                 '--in-place',
+                                 '--hanging-indent-match-default-indent',
+                                 filename],
+                           standard_out=output_file,
+                           standard_error=None)
+            with open(filename) as f:
+                self.assertEqual('''\
+def a():
+    test_var = 1
+
+    for hello, world, may in sample(
+        test_var, test_var, test_var, test_var,
+    ):
+        print(hello, world, may)
+
+
+def sample(a, b, c, d):
+    return [(1, 2, 3)]
+''', f.read())
+
     def test_end_to_end(self):
         with temporary_file("""\
 import os

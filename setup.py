@@ -36,7 +36,7 @@ with open('README.rst') as readme:
               'Topic :: Software Development :: Libraries :: Python Modules',
               'Topic :: Software Development :: Quality Assurance'],
           keywords='beautify, code, format, formatter, reformat, style',
-          py_modules=['pyformat'],
+          py_modules=['pyformat', 'extra_reports'],
           zip_safe=False,
           install_requires=['autoflake>=0.6.6',
                             'autopep8>=1.2.2',
