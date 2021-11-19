@@ -39,11 +39,11 @@ with open('README.rst') as readme:
           py_modules=['pyformat'],
           zip_safe=False,
           install_requires=['autoflake>=0.6.6',
-                            'autopep8>=1.2.2',
                             'docformatter>=0.7',
                             'unify>=0.2',
                             'isort>=5.9.3',
-                            'add-trailing-comma>=2.2.0'
+                            'add-trailing-comma>=2.2.0',
+                            'black',
                             ],
           entry_points={
               'console_scripts': ['pyformat = pyformat:main']},

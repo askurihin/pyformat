@@ -35,11 +35,14 @@ import sys
 from typing import Tuple
 
 from add_trailing_comma._main import _fix_src as add_trailing_comma_to_code
-import autoflake
 import autopep8
 import docformatter
 import isort
 import unify
+import autoflake
+import black
+import black.mode
+import black.report
 
 
 __version__ = '1.0a0'
@@ -54,18 +57,14 @@ def formatters(aggressive, apply_config, filename='',
         yield lambda code: autoflake.fix_code(
             code,
             remove_all_unused_imports=remove_all_unused_imports,
-            remove_unused_variables=remove_unused_variables)
+            remove_unused_variables=remove_unused_variables,
+        )
         if add_trailing_comma:
             yield lambda code: add_trailing_comma_to_code(code, min_version=(3, 6))
 
-        autopep8_options = autopep8.parse_args(
-            [filename] + int(aggressive) * ['--aggressive'],
-            apply_config=apply_config)
-    else:
-        autopep8_options = autopep8.parse_args(
-            [filename], apply_config=apply_config)
-
-    yield lambda code: autopep8.fix_code(code, options=autopep8_options)
+    if add_trailing_comma:
+        yield lambda code: add_trailing_comma_to_code(code, min_version=(3, 6))
+    yield _format_by_black
     yield docformatter.format_code
     yield unify.format_code
     if sort_imports:
@@ -74,10 +73,22 @@ def formatters(aggressive, apply_config, filename='',
 
 def _format_by_isort(code):
     config_dict = {
-        'settings_path': Path('.').resolve().absolute()
+        'settings_path': Path('.').resolve().absolute(),
+        'quiet': True,
     }
     config = isort.Config(**config_dict)
     return isort.code(code=code, config=config)
+
+def _format_by_black(code):
+    mode = black.mode.Mode(
+        line_length=79,
+        string_normalization=False,
+        preview=True,
+    )
+    try:
+        return black.format_file_contents(code, fast=True, mode=mode)
+    except black.report.NothingChanged:
+        return code
 
 
 def format_code(source, aggressive=False, apply_config=False, filename='',
